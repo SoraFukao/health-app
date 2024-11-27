@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>健康管理アプリ模型</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h1>健康管理アプリ模型</h1>
+
+    <!-- タブのナビゲーション -->
+    <nav>
+        <button onclick="showSection('goal')">目標設定</button>
+        <button onclick="showSection('community')">コミュニティ</button>
+        <button onclick="showSection('profile')">プロフィール設定</button>
+    </nav>
+
+    <!-- 目標設定エリア -->
+    <section id="goal" class="section">
+        <h2>目標設定</h2>
+        <input type="text" id="goalInput" placeholder="目標を入力してください">
+        <button onclick="addGoal()">目標を追加</button>
+        <ul id="goalList"></ul>
+    </section>
+
+      <!-- コミュニティエリア -->
+    <section id="community" class="section" style="display:none;">
+        <h2>コミュニティ投稿</h2>
+        <textarea id="postInput" placeholder="投稿内容を入力してください" rows="5"></textarea>
+        <button onclick="addPost()">投稿</button>
+        <ul id="postList"></ul>
+    </section>
+     
+    <!-- プロフィール設定エリア -->
+    <section id="profile" class="section" style="display:none;">
+        <h2>プロフィール設定</h2>
+        <input type="text" id="nicknameInput" placeholder="ニックネームを入力してください">
+        <button onclick="saveProfile()">保存</button>
+        <p id="profileDisplay"></p>
+    </section>
+
+    <script src="script.js"></script>
+</body>
+</html>
