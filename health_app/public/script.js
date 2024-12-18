@@ -29,136 +29,6 @@ function getCurrentDateTime() {
     return now.toLocaleString();
 }
 
-// 目標を追加
-function addGoal() {
-    const goalInput = document.getElementById('goalInput');
-    const goalText = goalInput.value;
-    if (goalText) {
-        const goal = {
-            text: goalText,
-            progress: 0,
-            completed: false
-        };
-        displayGoal(goal);
-        saveGoal(goal);
-        goalInput.value = '';
-    }
-}
-
-// 目標を表示
-function displayGoal(goal) {
-    const goalList = document.getElementById('goalList');
-    const listItem = document.createElement('li');
-    listItem.className = 'goal-item';
-    
-    const goalText = document.createElement('span');
-    goalText.textContent = goal.text;
-    goalText.className = 'goal-text';
-    listItem.appendChild(goalText);
-
-
-    // 進捗バー
-    const progressBar = document.createElement('div');
-    progressBar.className = 'progress-bar';
-    const progress = document.createElement('div');
-    progress.className = 'progress';
-    progress.style.width = `${goal.progress}%`;
-    progressBar.appendChild(progress);
-    listItem.appendChild(progressBar);
-
-    // 進捗 +10% ボタン
-    const incrementButton = document.createElement('button');
-    incrementButton.className = 'increment-button';
-    incrementButton.textContent = '進捗 +10%';
-    incrementButton.onclick = () => updateProgress(goal, progress, listItem);
-    listItem.appendChild(incrementButton);
-
-
-    // 編集ボタン
-    const editButton = document.createElement('button');
-    editButton.className = 'edit-button';
-    editButton.textContent = '編集';
-    editButton.onclick = () => editGoal(goal, goalText);
-    listItem.appendChild(editButton);
-
-    // 達成ボタン
-    const completeButton = document.createElement('button');
-    completeButton.className = 'complete-button';
-    completeButton.textContent = '達成';
-    completeButton.onclick = () => completeGoal(goal, listItem);
-    listItem.appendChild(completeButton);
-
-    // 削除ボタン
-    const deleteButton = document.createElement('button');
-    deleteButton.className = 'delete-button';
-    deleteButton.textContent = '削除';
-    deleteButton.onclick = () => deleteGoal(goal, listItem);
-    listItem.appendChild(deleteButton);
-
-    goalList.appendChild(listItem);
-}
-
-// 進捗度を更新
-function updateProgress(goal, progressElement, listItem) {
-    if (goal.progress < 100 && !goal.completed) {
-        goal.progress += 10;
-        if (goal.progress > 100) goal.progress = 100;
-        progressElement.style.width = `${goal.progress}%`;
-        saveGoalsToStorage();
-    }
-}
-
-// 目標を達成
-function completeGoal(goal, listItem) {
-    goal.completed = true;
-    listItem.classList.add('goal-completed');
-    saveGoalsToStorage();
-}
-
-// 目標を編集
-function editGoal(goal, goalTextElement) {
-    const newGoalText = prompt("新しい目標を入力してください:", goal.text);
-    if (newGoalText !== null && newGoalText.trim() !== "") {
-        goal.text = newGoalText.trim();
-        goalTextElement.textContent = goal.text;
-        saveGoalsToStorage();
-    }
-}
-
-// 目標を削除
-function deleteGoal(goal, listItem) {
-    listItem.remove();
-    let goals = JSON.parse(localStorage.getItem('goals')) || [];
-    goals = goals.filter(g => g.text !== goal.text);
-    localStorage.setItem('goals', JSON.stringify(goals));
-}
-
-// ローカルストレージに目標を保存
-function saveGoal(goal) {
-    let goals = JSON.parse(localStorage.getItem('goals')) || [];
-    goals.push(goal);
-    localStorage.setItem('goals', JSON.stringify(goals));
-}
-
-// ローカルストレージに保存されている目標をロード
-function loadGoals() {
-    const goals = JSON.parse(localStorage.getItem('goals')) || [];
-    goals.forEach(goal => displayGoal(goal));
-}
-
-// ローカルストレージ内の目標を更新
-function saveGoalsToStorage() {
-    const goals = [];
-    const goalItems = document.querySelectorAll('.goal-item');
-    goalItems.forEach(item => {
-        const text = item.querySelector('span').textContent;
-        const progress = parseInt(item.querySelector('.progress').style.width);
-        const completed = item.classList.contains('goal-completed');
-        goals.push({ text, progress, completed });
-    });
-    localStorage.setItem('goals', JSON.stringify(goals));
-}
-
 // 投稿を追加
 function addPost() {
     const postInput = document.getElementById('postInput').value;
@@ -169,6 +39,7 @@ function addPost() {
             user: userName,
             content: postInput,
             datetime: getCurrentDateTime(),
+            likedBy: [],
             responses: []
         };
         displayPost(post);
@@ -177,11 +48,6 @@ function addPost() {
     } else if (!userName) {
         alert("プロフィールでユーザー名を設定してください。");
     }
-}
-
-// 改行を <br> に変換する関数
-function formatTextWithLineBreaks(text) {
-    return text.replace(/\n/g, '<br>');
 }
 
 // 投稿を表示
@@ -196,22 +62,32 @@ function displayPost(post) {
     postHeader.innerHTML = `<strong>${post.user}</strong> (${post.datetime})`;
     postItem.appendChild(postHeader);
 
-    // 投稿内容を表示する部分（改行して表示）
+    // 投稿内容を表示する部分
     const postContent = document.createElement('p');
     postContent.className = 'post-content';
     postContent.innerHTML = formatTextWithLineBreaks(post.content);
     postItem.appendChild(postContent);
 
-     // いいねボタンとカウント
-     const likeButton = document.createElement('button');
-     likeButton.className = 'like-button';
-     likeButton.textContent = `いいね (${post.likes || 0})`;
-     likeButton.onclick = () => {
-         post.likes = (post.likes || 0) + 1;
-         likeButton.textContent = `いいね (${post.likes})`;
-         savePostsToStorage();
-     };
-     postItem.appendChild(likeButton);
+    // いいねボタンとカウント
+    const likeButton = document.createElement('button');
+    likeButton.className = 'like-button';
+    const currentUser = localStorage.getItem('nickname');
+    post.likedBy = post.likedBy || []; // 初期化
+    likeButton.textContent = `いいね (${post.likedBy.length})`;
+
+    if (post.likedBy.includes(currentUser)) {
+        likeButton.disabled = true; // すでに「いいね」している場合、ボタンを無効化
+    }
+
+    likeButton.onclick = () => {
+        if (!post.likedBy.includes(currentUser)) {
+            post.likedBy.push(currentUser); // 「いいね」したユーザーを記録
+            likeButton.textContent = `いいね (${post.likedBy.length})`;
+            likeButton.disabled = true; // ボタンを無効化
+            savePostsToStorage();
+        }
+    };
+    postItem.appendChild(likeButton);
 
     // 回答リスト
     const responseList = document.createElement('ul');
@@ -248,7 +124,8 @@ function addResponse(post, content, responseList) {
         const response = {
             user: userName,
             content: content,
-            datetime: getCurrentDateTime()
+            datetime: getCurrentDateTime(),
+            likedBy: []
         };
         post.responses.push(response);
         displayResponse(response, responseList);
@@ -269,7 +146,7 @@ function displayResponse(response, responseList) {
     responseHeader.innerHTML = `<strong>${response.user}</strong> (${response.datetime})`;
     responseItem.appendChild(responseHeader);
 
-    // 回答内容を表示する部分（改行して表示）
+    // 回答内容を表示する部分
     const responseContent = document.createElement('p');
     responseContent.className = 'response-content';
     responseContent.innerHTML = formatTextWithLineBreaks(response.content);
@@ -278,15 +155,30 @@ function displayResponse(response, responseList) {
     // いいねボタンとカウント
     const likeButton = document.createElement('button');
     likeButton.className = 'like-button';
-    likeButton.textContent = `いいね (${response.likes || 0})`;
+    const currentUser = localStorage.getItem('nickname');
+    response.likedBy = response.likedBy || []; // 初期化
+    likeButton.textContent = `いいね (${response.likedBy.length})`;
+
+    if (response.likedBy.includes(currentUser)) {
+        likeButton.disabled = true; // すでに「いいね」している場合、ボタンを無効化
+    }
+
     likeButton.onclick = () => {
-        response.likes = (response.likes || 0) + 1;
-        likeButton.textContent = `いいね (${response.likes})`;
-        savePostsToStorage();
+        if (!response.likedBy.includes(currentUser)) {
+            response.likedBy.push(currentUser); // 「いいね」したユーザーを記録
+            likeButton.textContent = `いいね (${response.likedBy.length})`;
+            likeButton.disabled = true; // ボタンを無効化
+            savePostsToStorage();
+        }
     };
     responseItem.appendChild(likeButton);
 
     responseList.appendChild(responseItem);
+}
+
+// 改行を <br> に変換する関数
+function formatTextWithLineBreaks(text) {
+    return text.replace(/\n/g, '<br>');
 }
 
 // ローカルストレージに投稿を保存
@@ -312,7 +204,9 @@ function savePostsToStorage() {
         const user = match[1];
         const datetime = match[2];
         const content = postItem.querySelector('.post-content').innerText;
-        const likes = parseInt(postItem.querySelector('.like-button').textContent.match(/\d+/)[0]);
+        const likeButton = postItem.querySelector('.like-button');
+        const likes = parseInt(likeButton.textContent.match(/\d+/)[0]);
+        const likedBy = likeButton.likedBy || [];
         const responses = [];
 
         const responseItems = postItem.querySelectorAll('.response');
@@ -322,11 +216,13 @@ function savePostsToStorage() {
             const resUser = resMatch[1];
             const resDatetime = resMatch[2];
             const resContent = responseItem.querySelector('.response-content').innerText;
-            const resLikes = parseInt(responseItem.querySelector('.like-button').textContent.match(/\d+/)[0]);
-            responses.push({ user: resUser, datetime: resDatetime, content: resContent, likes: resLikes });
+            const resLikeButton = responseItem.querySelector('.like-button');
+            const resLikes = parseInt(resLikeButton.textContent.match(/\d+/)[0]);
+            const resLikedBy = resLikeButton.likedBy || [];
+            responses.push({ user: resUser, datetime: resDatetime, content: resContent, likes: resLikes, likedBy: resLikedBy });
         });
 
-        posts.push({ user, content, datetime, likes, responses });
+        posts.push({ user, datetime, content, likes, likedBy, responses });
     });
     localStorage.setItem('posts', JSON.stringify(posts));
 }
@@ -334,42 +230,5 @@ function savePostsToStorage() {
 // ページロード時にデータを読み込む
 window.onload = function() {
     displayProfile();
-    loadGoals();
     loadPosts();
-};
-
-// 目標をサーバーから取得
-async function loadGoalsFromServer() {
-    const response = await fetch('http://localhost:5000/api/goals');
-    const goals = await response.json();
-    goals.forEach(goal => displayGoal(goal));
-}
-
-// 目標をサーバーに追加
-async function addGoalToServer(goal) {
-    const response = await fetch('http://localhost:5000/api/goals', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(goal)
-    });
-    const newGoal = await response.json();
-    displayGoal(newGoal);
-}
-
-// フロントエンドでの目標追加時にサーバーと同期
-function addGoal() {
-    const goalInput = document.getElementById('goalInput');
-    const goalText = goalInput.value;
-    if (goalText) {
-        const goal = { id: Date.now().toString(), text: goalText, progress: 0, completed: false };
-        addGoalToServer(goal); // サーバーに追加
-        goalInput.value = '';
-    }
-}
-
-// ページロード時にサーバーからデータを取得
-window.onload = function() {
-    displayProfile();
-    loadGoalsFromServer();
-    loadPostsFromServer(); // 同様に投稿データもロード
 };
